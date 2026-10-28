@@ -6,7 +6,7 @@
 <title>試題分析小幫手</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
 <style>
@@ -184,6 +184,104 @@ dialog#settings::backdrop { background: rgba(30,20,10,.45); }
 .keynote { font-size: 13px; background: var(--mark-soft); border-radius: 6px; padding: 10px 12px; line-height: 1.6; }
 .dlg-f { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--line); }
 .toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 8px 16px; border-radius: 6px; font-size: 14px; z-index: 20; }
+
+/* ===== 卡通繪本風格層：紅黃咖啡配色、粗咖啡外框、圓角、錯位陰影 ===== */
+:root {
+  --bg: #fff3d1; --paper: #ffffff; --ink: #5b3415; --ink-soft: #8c6242; --line: #5b3415;
+  --red: #e3261b; --red-soft: #ffe1dc; --mark: #ffd23f; --mark-soft: #fff1b6;
+  --green: #2f9a4c; --green-soft: #dcf3e0; --sky: #69bfee; --sky-soft: #dff2fc; --pink-soft: #ffe6ef;
+  --dots: rgba(255, 196, 0, .28); --on-red: #ffffff;
+  --shadow: 5px 5px 0 var(--line);
+  --f-display: "Huninn", "Zen Maru Gothic", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #2b1d12; --paper: #3a281a; --ink: #ffecd0; --ink-soft: #dcb995; --line: #e9c08c;
+  --red: #ff5b4d; --red-soft: #4d2620; --mark: #ffcf3a; --mark-soft: #4c3b19;
+  --green: #74d68f; --green-soft: #213a28; --sky: #7fcaf2; --sky-soft: #1f3442; --pink-soft: #4a2633;
+  --dots: rgba(255, 207, 58, .08); --on-red: #ffffff; --shadow: 5px 5px 0 #120b06; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #2b1d12; --paper: #3a281a; --ink: #ffecd0; --ink-soft: #dcb995; --line: #e9c08c;
+  --red: #ff5b4d; --red-soft: #4d2620; --mark: #ffcf3a; --mark-soft: #4c3b19;
+  --green: #74d68f; --green-soft: #213a28; --sky: #7fcaf2; --sky-soft: #1f3442; --pink-soft: #4a2633;
+  --dots: rgba(255, 207, 58, .08); --on-red: #ffffff; --shadow: 5px 5px 0 #120b06; color-scheme: dark; }
+
+body { background-color: var(--bg); background-image: radial-gradient(var(--dots) 2.5px, transparent 3px); background-size: 28px 28px; font-weight: 500; }
+header.top { background: var(--red); color: var(--on-red); border: 3px solid var(--line); border-radius: 26px; box-shadow: var(--shadow); padding: 14px 20px; align-items: center; margin-bottom: 26px; }
+header.top h1 { font-family: var(--f-display); color: var(--on-red); text-shadow: 2px 2px 0 rgba(70,30,10,.55); display: flex; align-items: center; gap: 12px; letter-spacing: .06em; }
+header.top h1::before { content: "✎"; flex: none; width: 46px; height: 46px; border-radius: 50%; background: var(--mark); border: 3px solid #5b3415; color: #5b3415; display: grid; place-items: center; font-size: 22px; text-shadow: none; box-shadow: 2px 2px 0 #5b3415; }
+header.top h1 .pen { display: none; }
+header.top p { color: var(--on-red); opacity: .95; font-weight: 700; }
+.theme-seg { border: 2.5px solid #5b3415; background: #fff; }
+.theme-seg button { color: #5b3415; font-weight: 700; }
+.theme-seg button[aria-pressed="true"] { background: var(--mark); color: #5b3415; }
+header.top .btn { background: #fff; color: #5b3415; border-color: #5b3415; box-shadow: 2px 2px 0 #5b3415; }
+
+.card, .panel { border: 3px solid var(--line); border-radius: 24px; box-shadow: var(--shadow); }
+aside.input { gap: 16px; }
+.label { font-family: var(--f-display); font-size: 14px; color: var(--ink); letter-spacing: .08em; }
+.seg { border: 2.5px solid var(--line); border-radius: 999px; background: var(--paper); }
+.seg button { font-weight: 700; color: var(--ink-soft); }
+.seg button[aria-pressed="true"] { background: var(--mark); color: #5b3415; }
+.drop { border: 3px dashed var(--line); border-radius: 20px; background: var(--mark-soft); }
+.drop.over { background: var(--red-soft); border-color: var(--red); }
+.preview { border: 3px solid var(--line); border-radius: 18px; }
+textarea, select { border: 2.5px solid var(--line); border-radius: 16px; background: var(--paper); }
+.btn { border: 2.5px solid var(--line); border-radius: 999px; box-shadow: 3px 3px 0 var(--line); transition: transform .08s, box-shadow .08s; }
+.btn:hover { background: var(--mark); color: #5b3415; }
+.btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--line); }
+.btn.ghost { border-color: var(--line); }
+.btn.primary { background: var(--red); border-color: var(--line); color: var(--on-red); font-family: var(--f-display); font-size: 19px; letter-spacing: .1em; padding: 12px 18px; box-shadow: 4px 4px 0 var(--line); }
+.btn.primary:hover { background: var(--red); filter: brightness(1.08); color: var(--on-red); }
+.status { border: 2px solid var(--line); border-radius: 14px; }
+.model-line { border: 2.5px solid var(--line); border-radius: 16px; background: var(--sky-soft); }
+.res { border: 2.5px solid var(--line); border-radius: 18px; background: var(--sky-soft); padding: 12px 14px; }
+
+.tabs { border-bottom: 0; gap: 8px; padding: 2px 2px 12px; }
+.tab { border: 2.5px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--ink); top: 0; font-weight: 700; box-shadow: 2px 2px 0 var(--line); }
+.tab[aria-selected="true"] { background: var(--mark); color: #5b3415; border-color: var(--line); }
+.panel { border-top: 3px solid var(--line); }
+
+h2.sec { font-size: 20px; }
+h2.sec .n { display: inline-grid; place-items: center; min-width: 34px; height: 34px; padding: 0 6px; border-radius: 999px; background: var(--red); color: var(--on-red); border: 2.5px solid var(--line); font-size: 16px; }
+.qbox { background: var(--mark-soft); border: 2.5px dashed var(--line); border-radius: 18px; }
+.opt { background: var(--red); color: var(--on-red); border: 2px solid var(--line); }
+.opt.ok { background: var(--green); }
+.causes li { border: 2.5px solid var(--line); border-radius: 18px; box-shadow: 3px 3px 0 var(--line); }
+.causes li:nth-child(1) { background: var(--sky-soft); } .causes li:nth-child(2) { background: var(--mark-soft); }
+.causes li:nth-child(3) { background: var(--green-soft); } .causes li:nth-child(4) { background: var(--pink-soft); }
+.sugg .item { border: 2.5px solid var(--line); border-radius: 18px; padding: 10px 14px; background: var(--paper); }
+.sugg .item h3 span { display: inline-block; background: var(--mark); color: #5b3415; border: 2px solid var(--line); border-radius: 999px; padding: 0 8px; font-size: 13px; }
+.cnt { border-radius: 999px; }
+.sample-tag { background: var(--mark); color: #5b3415; border: 2px solid var(--line); border-radius: 999px; padding: 0 8px; }
+.empty h3 { font-size: 24px; }
+.thinking i { animation: hop .7s ease-in-out infinite; border: 2px solid var(--line); width: 14px; height: 14px; }
+@keyframes hop { 50% { transform: translateY(-8px); } }
+@media (prefers-reduced-motion: reduce) { .thinking i { animation: none; } }
+.md h2 { border-bottom: 3px dotted var(--line); }
+.md strong { background: linear-gradient(transparent 55%, var(--mark) 55%); color: inherit; }
+.md th { background: var(--mark-soft); }
+.md th, .md td { border: 2px solid var(--line); }
+.toolbar { border-top: 3px dotted var(--line); }
+dialog#settings { border: 3px solid var(--line); border-radius: 24px; box-shadow: var(--shadow); }
+.dlg-h { border-bottom: 3px dotted var(--line); }
+.dlg-f { border-top: 3px dotted var(--line); }
+.mopt { border: 2.5px solid var(--line); border-radius: 16px; }
+.mopt:has(input:checked) { background: var(--mark-soft); border-color: var(--red); box-shadow: 3px 3px 0 var(--red); }
+.keynote { border: 2px dashed var(--line); border-radius: 14px; }
+.toast { border: 2.5px solid var(--mark); border-radius: 999px; }
+
+/* 深入程度與延伸欄位 */
+.depth button { font-size: 14px; }
+.depth-badge { display: inline-block; font-size: 12.5px; font-weight: 700; border: 2px solid var(--line); border-radius: 999px; padding: 1px 10px; background: var(--sky-soft); margin-bottom: 12px; }
+ol.steps { margin: 0; padding-left: 1.4em; display: grid; gap: 4px; }
+ol.steps li::marker { color: var(--red); font-weight: 700; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 10px; }
+.kchip { border: 2px solid var(--line); border-radius: 999px; padding: 2px 12px; background: var(--green-soft); font-size: 14px; }
+ul.curr { margin: 0; padding-left: 1.2em; font-size: 14px; }
+ul.curr b { font-family: var(--f-mono); color: var(--red); margin-right: 4px; }
+.ex { font-size: 13px; color: var(--ink-soft); margin-top: 4px; }
+ol.diag { margin: 0; padding-left: 1.4em; display: grid; gap: 8px; }
+ol.diag .hint { margin-top: 2px; }
 </style>
 </head>
 <body>
@@ -237,6 +335,16 @@ dialog#settings::backdrop { background: rgba(30,20,10,.45); }
       <div>
         <label class="label" for="note">補充說明（選填）</label>
         <textarea id="note" style="margin-top:6px" placeholder="年級、正確答案、學生答題情形，例如：五年級，答對率 48%，多數選 A"></textarea>
+      </div>
+
+      <div>
+        <div class="label">分析深入程度</div>
+        <div class="seg depth" role="group" aria-label="分析深入程度" style="margin-top:6px">
+          <button type="button" data-depth="brief" aria-pressed="false">精簡</button>
+          <button type="button" data-depth="standard" aria-pressed="true">標準</button>
+          <button type="button" data-depth="deep" aria-pressed="false">深入</button>
+        </div>
+        <p class="hint" id="depthHint" style="margin-top:6px"></p>
       </div>
 
       <div>
@@ -429,6 +537,29 @@ ${CONJECTURING_TEXT}
 
 輸出格式：請使用 Markdown 格式，標題清晰。` },
 };
+
+// ---------- 分析深入程度 ----------
+const DEPTHS = {
+  brief: { name: "精簡", hint: "快速掌握重點：能力面向、主要誘答、錯因與教學建議各列重點。",
+    prompt: `【分析深入程度：精簡】以下要求優先於上方的數量規定：能力面向寫 1–2 句；誘答只列最主要的 1–2 個選項；錯題主因 4 點；教學重點 4 項，每項恰好 2 點。不要輸出額外欄位。` },
+  standard: { name: "標準", hint: "原版的四個面向分析：能力、誘答、錯因四點、教學重點四項。",
+    prompt: `【分析深入程度：標準】依上方四個面向的規定輸出即可。` },
+  deep: { name: "深入", hint: "再加上解題步驟、先備知識與課綱對應、每個選項的分析、學生典型想法與課堂診斷提問，費時較久。",
+    prompt: `【分析深入程度：深入】除了四個面向之外，JSON 物件再加上以下欄位：
+"solutionSteps": 標準解題步驟，3–6 個字串，每步一句；
+"prerequisites": 解這題需要的先備知識或概念，3–5 個簡短字串；
+"curriculum": 對應的十二年國教數學領域學習表現或學習內容，1–3 個 {"code":"代碼","description":"說明"}；無法確定代碼時，code 寫「推測」並在說明中寫出年級與主題，不要編造代碼；
+"allOptions": 若為選擇題，逐一分析每個選項（包含正確選項），[{"option":"(A) …","correct":true 或 false,"reason":"為何正確，或學生為何會選它"}]；
+errorCauses 每一項加上 "example": 學生可能出現的典型作答或說法（20–40 字）；
+teachingSuggestions 每一項改為 3–4 點；
+"diagnosticQuestions": 3–4 個課堂上可用來診斷迷思的提問，[{"question":"提問","purpose":"想診斷什麼"}]。` },
+};
+let depth = (() => { try { return localStorage.getItem("ea_depth") || "standard"; } catch (e) { return "standard"; } })();
+if (!DEPTHS[depth]) depth = "standard";
+function showDepth() {
+  document.querySelectorAll("[data-depth]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.depth === depth));
+  const h = document.getElementById("depthHint"); if (h) h.textContent = DEPTHS[depth].hint;
+}
 
 // ---------- 範例（開啟時顯示，標示為範例） ----------
 const EXAMPLE = {
@@ -749,19 +880,30 @@ function thinking(label) {
 
 function renderAnalysis() {
   const a = state.analysis;
-  if (state.busy === "analysis") return thinking("Claude 正在解題並分析，大約需要 20–60 秒…");
+  if (state.busy === "analysis") return thinking(`正在以「${DEPTHS[depth].name}」程度解題並分析，請稍候…`);
   if (!a) return `<div class="empty"><h3>還沒有分析結果</h3><p>在左側上傳題目圖片或貼上題目文字，再按「開始分析」。</p></div>`;
+  const sec = (n, t) => `<h2 class="sec"><span class="n">${n}</span>${t}</h2>`;
+  const opts = a.allOptions?.length ? a.allOptions : null;
+  const steps = a.solutionSteps?.length ? sec("★", "解題步驟") + `<ol class="steps">${a.solutionSteps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>` : "";
+  const pre = (a.prerequisites?.length || a.curriculum?.length) ? sec("★", "先備知識與課綱對應")
+    + (a.prerequisites?.length ? `<div class="chips">${a.prerequisites.map((x) => `<span class="kchip">${esc(x)}</span>`).join("")}</div>` : "")
+    + (a.curriculum?.length ? `<ul class="curr">${a.curriculum.map((c) => `<li><b>${esc(c.code)}</b>${esc(c.description)}</li>`).join("")}</ul>` : "") : "";
+  const diag = a.diagnosticQuestions?.length ? sec("★", "課堂診斷提問") + `<ol class="diag">${a.diagnosticQuestions.map((q) => `<li><b>${esc(q.question)}</b><p class="hint">${esc(q.purpose)}</p></li>`).join("")}</ol>` : "";
+  const dname = DEPTHS[a.depth || "standard"]?.name || "標準";
   return `
-    ${state.isExample ? `<p class="hint" style="margin:0 0 12px"><span class="sample-tag">範例</span>以下是示範結果。上傳你的題目後按「開始分析」，就會換成你的題目。</p>` : ""}
+    ${state.isExample ? `<p class="hint" style="margin:0 0 12px"><span class="sample-tag">範例</span>以下是示範結果。上傳你的題目後按「開始分析」，就會換成你的題目。</p>` : `<span class="depth-badge">分析深度：${dname}</span>`}
     ${a.question ? `<div class="qbox"><div class="q">${esc(a.question)}</div>${a.answer ? `<div class="ans"><b>正確答案</b>　${esc(a.answer)}</div>` : ""}</div>` : ""}
-    <h2 class="sec"><span class="n">一、</span>主要檢測的能力面向</h2>
+    ${steps}
+    ${sec("一", "主要檢測的能力面向")}
     <p class="ability">${esc(a.abilityAssessment)}</p>
-    <h2 class="sec"><span class="n">二、</span>誘答選項與理由</h2>
-    <ul class="dist">${(a.distractors || []).map((d) => `<li><span class="opt">${esc(d.option)}</span><span>${esc(d.reason)}</span></li>`).join("") || "<li>無</li>"}</ul>
-    <h2 class="sec"><span class="n">三、</span>錯題主因</h2>
-    <ol class="causes">${(a.errorCauses || []).map((c) => `<li><div class="t">${esc(c.title)}</div><div>${esc(c.summary)} ${cnt(c.summary)}</div></li>`).join("")}</ol>
-    <h2 class="sec"><span class="n">四、</span>教學重點與建議</h2>
+    ${pre}
+    ${sec("二", opts ? "各選項分析與誘答理由" : "誘答選項與理由")}
+    <ul class="dist">${(opts || a.distractors || []).map((d) => `<li><span class="opt${d.correct ? " ok" : ""}">${esc(d.option)}${d.correct ? " ✓" : ""}</span><span>${esc(d.reason)}</span></li>`).join("") || "<li>無</li>"}</ul>
+    ${sec("三", "錯題主因")}
+    <ol class="causes">${(a.errorCauses || []).map((c) => `<li><div class="t">${esc(c.title)}</div><div>${esc(c.summary)} ${cnt(c.summary)}</div>${c.example ? `<div class="ex">學生可能會：${esc(c.example)}</div>` : ""}</li>`).join("")}</ol>
+    ${sec("四", "教學重點與建議")}
     <div class="sugg">${(a.teachingSuggestions || []).map((s, i) => `<div class="item"><h3><span>重點${i + 1}</span>${esc(s.title)}</h3><ul>${(s.points || []).map((p) => `<li>${esc(p)}${cnt(p)}</li>`).join("")}</ul></div>`).join("")}</div>
+    ${diag}
     ${state.isExample ? "" : `<div class="toolbar">
       <button class="btn small ghost" data-act="copy">複製文字</button>
       <button class="btn small ghost" data-act="dl">下載 .md</button>
@@ -813,15 +955,25 @@ function render() {
 
 // ---------- 匯出 ----------
 function analysisMd(a) {
-  let s = `# 試題分析報告\n\n`;
+  let s = `# 試題分析報告（分析深度：${DEPTHS[a.depth || "standard"]?.name || "標準"}）\n\n`;
   if (a.question) s += `**題目**：${a.question}\n\n`;
   if (a.answer) s += `**正確答案**：${a.answer}\n\n`;
-  s += `## 一、題目主要檢測的能力面向\n\n${a.abilityAssessment}\n\n## 二、誘答的選項和理由\n\n`;
-  (a.distractors || []).forEach((d) => (s += `- **${d.option}**：${d.reason}\n`));
+  if (a.solutionSteps?.length) { s += `## 解題步驟\n\n`; a.solutionSteps.forEach((x, i) => (s += `${i + 1}. ${x}\n`)); s += `\n`; }
+  s += `## 一、題目主要檢測的能力面向\n\n${a.abilityAssessment}\n\n`;
+  if (a.prerequisites?.length || a.curriculum?.length) {
+    s += `## 先備知識與課綱對應\n\n`;
+    (a.prerequisites || []).forEach((x) => (s += `- ${x}\n`));
+    (a.curriculum || []).forEach((c) => (s += `- **${c.code}**：${c.description}\n`));
+    s += `\n`;
+  }
+  const opts = a.allOptions?.length ? a.allOptions : null;
+  s += opts ? `## 二、各選項分析與誘答理由\n\n` : `## 二、誘答的選項和理由\n\n`;
+  (opts || a.distractors || []).forEach((d) => (s += `- **${d.option}**${d.correct ? "（正確）" : ""}：${d.reason}\n`));
   s += `\n## 三、錯題主因\n\n`;
-  (a.errorCauses || []).forEach((c, i) => (s += `${i + 1}. **${c.title}**：${c.summary}\n`));
+  (a.errorCauses || []).forEach((c, i) => (s += `${i + 1}. **${c.title}**：${c.summary}${c.example ? `\n   - 學生可能會：${c.example}` : ""}\n`));
   s += `\n## 四、教學重點與建議\n\n`;
   (a.teachingSuggestions || []).forEach((t, i) => { s += `### 重點${i + 1}：${t.title}\n\n`; (t.points || []).forEach((p) => (s += `- ${p}\n`)); s += `\n`; });
+  if (a.diagnosticQuestions?.length) { s += `## 課堂診斷提問\n\n`; a.diagnosticQuestions.forEach((q, i) => (s += `${i + 1}. **${q.question}**\n   - 目的：${q.purpose}\n`)); }
   return s;
 }
 function currentMd() { return state.tab === "analysis" ? analysisMd(state.analysis) : state.md[state.tab]; }
@@ -858,11 +1010,11 @@ async function analyze() {
   setStatus(""); state.md = {}; state.tab = "analysis"; state.busy = "analysis";
   state.ctl = new AbortController(); render();
   try {
-    const { text } = await callLLM({ prompt: `${ANALYSIS_TASK}\n\n${inp.ctx}`, image: inp.images, json: true, temperature: 0.2, maxTokens: 4000, signal: state.ctl.signal });
+    const { text } = await callLLM({ prompt: `${ANALYSIS_TASK}\n\n${DEPTHS[depth].prompt}\n\n${inp.ctx}`, image: inp.images, json: true, temperature: 0.2, maxTokens: depth === "deep" ? 10000 : 4000, signal: state.ctl.signal });
     const r = parseJSONLoose(text);
     if (r && r.error) setStatus("無法辨識題目：" + r.error, true);
     else if (!r || !r.abilityAssessment) setStatus("分析結果格式有誤，請按「開始分析」再試一次，或換一個型號。", true);
-    else { state.analysis = r; state.isExample = false; state.lastCtx = inp; }
+    else { r.depth = depth; state.analysis = r; state.isExample = false; state.lastCtx = inp; }
   } catch (e) { if (e?.name !== "AbortError") setStatus(errText(e), true); }
   state.busy = null; state.ctl = null; render();
 }
@@ -887,6 +1039,8 @@ async function generate(k) {
   state.busy = null; state.ctl = null; render();
 }
 $("analyzeBtn").onclick = analyze;
+document.querySelectorAll("[data-depth]").forEach((b) => (b.onclick = () => { depth = b.dataset.depth; try { localStorage.setItem("ea_depth", depth); } catch (e) {} showDepth(); }));
+showDepth();
 
 // ---------- 啟動 ----------
 render();
