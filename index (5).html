@@ -1,0 +1,895 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>試題分析小幫手</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<style>
+/* Layout: 批改桌 — 左側固定的「題目卡」，右側是分頁的分析紙；紅筆用於重點與錯誤、黃色螢光筆標示字數 */
+:root {
+  --bg: #f6f3ec;
+  --paper: #fffdf8;
+  --ink: #2b2620;
+  --ink-soft: #6b6156;
+  --line: #e2dbcd;
+  --red: #c2362b;
+  --red-soft: #f7e3df;
+  --mark: #f5dc6b;
+  --mark-soft: #fbf1c4;
+  --green: #3c7a4f;
+  --green-soft: #e1efe4;
+  --shadow: 0 1px 0 rgba(60,40,20,.05), 0 6px 20px -12px rgba(60,40,20,.35);
+  --f-display: "LXGW WenKai TC", "Kaiti TC", "DFKai-SB", "BiauKai", serif;
+  --f-body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #1b1916; --paper: #24211d; --ink: #ece6dc; --ink-soft: #a89e90; --line: #3a352e;
+  --red: #ec6a5c; --red-soft: #3d2420; --mark: #d9bd45; --mark-soft: #3a3320;
+  --green: #7cc394; --green-soft: #1f3326; --shadow: 0 6px 20px -12px rgba(0,0,0,.7); color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #1b1916; --paper: #24211d; --ink: #ece6dc; --ink-soft: #a89e90; --line: #3a352e;
+  --red: #ec6a5c; --red-soft: #3d2420; --mark: #d9bd45; --mark-soft: #3a3320;
+  --green: #7cc394; --green-soft: #1f3326; --shadow: 0 6px 20px -12px rgba(0,0,0,.7); color-scheme: dark; }
+
+* { box-sizing: border-box; }
+html { color-scheme: light; }
+body { margin: 0; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+.keyrow { display: flex; gap: 8px; }
+.keyrow input { flex: 1; min-width: 0; font: inherit; font-family: var(--f-mono); font-size: 13px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+.keyrow input:focus-visible, #customModel:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+#customModel { width: 100%; font: inherit; font-family: var(--f-mono); font-size: 13px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+.chk { display: flex; gap: 8px; align-items: center; font-size: 13.5px; }
+.chk input { accent-color: var(--red); }
+.chip { font-size: 11.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
+.chip.ok { background: var(--green-soft); color: var(--green); }
+.chip.no { background: var(--red-soft); color: var(--red); }
+.dlg-b a { color: var(--ink); text-decoration-color: var(--red); text-underline-offset: 3px; }
+.test-out { font-size: 13px; }
+.test-out.ok { color: var(--green); } .test-out.bad { color: var(--red); }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.7; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+header.top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; padding-bottom: 14px; border-bottom: 2px solid var(--ink); margin-bottom: 22px; }
+header.top h1 { font-family: var(--f-display); font-weight: 700; font-size: clamp(26px, 4vw, 34px); margin: 0; letter-spacing: .04em; }
+header.top h1 .pen { color: var(--red); }
+header.top p { margin: 0; color: var(--ink-soft); font-size: 13.5px; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+
+.card { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; box-shadow: var(--shadow); }
+aside.input { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+@media (max-width: 860px) { aside.input { position: static; } }
+
+.label { font-size: 12px; font-weight: 700; color: var(--ink-soft); letter-spacing: .12em; }
+.seg { display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { flex: 1; border: 0; background: transparent; color: var(--ink-soft); font: inherit; font-weight: 500; padding: 8px 6px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.seg button:focus-visible, .btn:focus-visible, .tab:focus-visible, textarea:focus-visible, select:focus-visible, .drop:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+
+.drop { border: 1.5px dashed var(--ink-soft); border-radius: 6px; padding: 18px 14px; text-align: center; color: var(--ink-soft); cursor: pointer; background: var(--bg); transition: border-color .15s, background .15s; }
+.drop.over { border-color: var(--red); background: var(--red-soft); }
+.drop strong { color: var(--ink); display: block; font-size: 15px; margin-bottom: 2px; }
+.drop small { font-size: 12.5px; }
+.drop-actions { display: flex; gap: 8px; justify-content: center; margin-top: 10px; flex-wrap: wrap; }
+.preview { position: relative; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: #fff; }
+.preview img { display: block; width: 100%; max-height: 320px; object-fit: contain; }
+.preview .x { position: absolute; top: 6px; right: 6px; }
+
+textarea, select { width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; resize: vertical; }
+textarea#qtext { min-height: 150px; }
+textarea#note { min-height: 64px; font-size: 14px; }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font: inherit; font-weight: 700; border-radius: 6px; padding: 9px 14px; cursor: pointer; border: 1px solid var(--ink); background: var(--paper); color: var(--ink); }
+.btn:hover { background: var(--mark-soft); }
+.btn.primary { background: var(--red); border-color: var(--red); color: #fff; font-size: 16px; padding: 12px 16px; }
+.btn.primary:hover { filter: brightness(1.06); background: var(--red); }
+.btn.small { font-size: 13px; padding: 5px 10px; font-weight: 500; }
+.btn.ghost { border-color: var(--line); }
+.btn[disabled] { opacity: .5; cursor: not-allowed; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.hint { font-size: 12.5px; color: var(--ink-soft); margin: 0; }
+.status { font-size: 13.5px; padding: 8px 10px; border-radius: 6px; background: var(--mark-soft); }
+.status.err { background: var(--red-soft); color: var(--red); }
+
+.res { margin-top: 4px; padding-top: 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; }
+.res a { color: var(--ink); text-decoration-color: var(--red); text-underline-offset: 3px; }
+.res .mail { font-family: var(--f-mono); font-size: 12.5px; user-select: all; }
+
+main.out { min-width: 0; }
+.tabs { display: flex; gap: 2px; overflow-x: auto; border-bottom: 1px solid var(--line); scrollbar-width: thin; }
+.tab { flex: none; border: 1px solid transparent; border-bottom: 0; background: transparent; font: inherit; font-weight: 500; color: var(--ink-soft); padding: 9px 14px; border-radius: 6px 6px 0 0; cursor: pointer; position: relative; top: 1px; }
+.tab[aria-selected="true"] { background: var(--paper); color: var(--ink); border-color: var(--line); font-weight: 700; }
+.tab .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--green); margin-left: 6px; vertical-align: middle; }
+.panel { background: var(--paper); border: 1px solid var(--line); border-top: 0; border-radius: 0 0 6px 6px; padding: 22px clamp(16px, 3vw, 32px) 28px; box-shadow: var(--shadow); min-height: 420px; }
+
+.sample-tag { display: inline-block; font-size: 12px; font-weight: 700; color: var(--red); border: 1px solid var(--red); border-radius: 3px; padding: 0 6px; margin-right: 8px; letter-spacing: .1em; }
+.qbox { background: var(--bg); border-left: 3px solid var(--ink); padding: 10px 14px; margin-bottom: 18px; border-radius: 0 6px 6px 0; }
+.qbox .q { font-family: var(--f-display); font-size: 17px; }
+.qbox .ans { margin-top: 4px; font-size: 14px; }
+.qbox .ans b { color: var(--green); }
+
+h2.sec { font-family: var(--f-display); font-size: 21px; font-weight: 700; margin: 24px 0 10px; display: flex; align-items: baseline; gap: 10px; text-wrap: balance; }
+h2.sec:first-of-type { margin-top: 0; }
+h2.sec .n { color: var(--red); }
+.ability { margin: 0; }
+.dist { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.dist li { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 12px; align-items: baseline; }
+.opt { font-family: var(--f-mono); font-size: 13px; font-weight: 500; color: var(--red); border: 1.5px solid var(--red); border-radius: 999px; padding: 0 9px; white-space: nowrap; }
+.causes { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; counter-reset: c; }
+@media (max-width: 560px) { .causes { grid-template-columns: minmax(0,1fr); } }
+.causes li { border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; counter-increment: c; }
+.causes li .t { font-weight: 700; }
+.causes li .t::before { content: counter(c) "．"; color: var(--red); }
+.sugg { display: grid; gap: 14px; }
+.sugg .item h3 { font-size: 15.5px; margin: 0 0 4px; }
+.sugg .item h3 span { color: var(--red); font-family: var(--f-display); margin-right: 6px; }
+.sugg ul { margin: 0; padding-left: 1.2em; }
+.sugg li { margin: 2px 0; }
+.cnt { font-family: var(--f-mono); font-size: 11px; padding: 0 5px; border-radius: 3px; background: var(--mark-soft); color: var(--ink-soft); margin-left: 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cnt.bad { background: var(--red-soft); color: var(--red); }
+.causes .cnt { margin-left: 0; }
+
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; margin-top: 22px; padding-top: 14px; border-top: 1px dashed var(--line); }
+.empty { text-align: center; padding: 40px 10px; color: var(--ink-soft); }
+.empty h3 { font-family: var(--f-display); color: var(--ink); font-size: 20px; margin: 0 0 6px; }
+.empty p { max-width: 44ch; margin: 0 auto 16px; }
+.thinking { color: var(--ink-soft); display: flex; align-items: center; gap: 10px; padding: 16px 0; }
+.thinking i { width: 10px; height: 10px; border-radius: 50%; background: var(--red); animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .25; transform: scale(.7); } }
+@media (prefers-reduced-motion: reduce) { .thinking i { animation: none; } }
+
+.md { max-width: 72ch; }
+.md h1, .md h2, .md h3 { font-family: var(--f-display); line-height: 1.35; text-wrap: balance; }
+.md h1 { font-size: 23px; margin: 0 0 12px; }
+.md h2 { font-size: 20px; margin: 24px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+.md h3 { font-size: 17px; margin: 18px 0 6px; }
+.md p, .md ul, .md ol { margin: 8px 0; }
+.md strong { background: linear-gradient(transparent 60%, var(--mark-soft) 60%); }
+.md table { border-collapse: collapse; font-size: 14px; }
+.md .tw { overflow-x: auto; margin: 10px 0; }
+.md th, .md td { border: 1px solid var(--line); padding: 6px 10px; vertical-align: top; text-align: left; }
+.md th { background: var(--bg); }
+.md code { font-family: var(--f-mono); font-size: 13px; background: var(--bg); padding: 0 4px; border-radius: 3px; }
+.md blockquote { margin: 10px 0; padding: 4px 14px; border-left: 3px solid var(--mark); color: var(--ink-soft); }
+.md hr { border: 0; border-top: 1px dashed var(--line); margin: 20px 0; }
+.hdr-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.theme-seg { display: flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--paper); }
+.theme-seg button { border: 0; background: transparent; color: var(--ink-soft); font: inherit; font-size: 13px; padding: 5px 12px; cursor: pointer; }
+.theme-seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.theme-seg button:focus-visible { outline: 2px solid var(--red); outline-offset: -2px; }
+.model-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; background: var(--bg); }
+.model-line b { font-size: 14px; }
+.model-line small { display: block; color: var(--ink-soft); font-size: 12px; line-height: 1.4; }
+dialog#settings { border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); padding: 0; width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 48px); box-shadow: 0 20px 60px -20px rgba(0,0,0,.5); }
+dialog#settings::backdrop { background: rgba(30,20,10,.45); }
+.dlg-h { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.dlg-h h2 { font-family: var(--f-display); font-size: 20px; margin: 0; }
+.dlg-b { padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+.mopt { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 4px 12px; align-items: start; border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; cursor: pointer; }
+.mopt:has(input:checked) { border-color: var(--red); background: var(--red-soft); }
+.mopt input { margin-top: 5px; accent-color: var(--red); }
+.mopt .nm { font-weight: 700; }
+.mopt .tg { font-size: 11.5px; font-weight: 700; color: var(--red); margin-left: 6px; }
+.mopt .ds { grid-column: 2; font-size: 13px; color: var(--ink-soft); line-height: 1.5; }
+.keynote { font-size: 13px; background: var(--mark-soft); border-radius: 6px; padding: 10px 12px; line-height: 1.6; }
+.dlg-f { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--line); }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 8px 16px; border-radius: 6px; font-size: 14px; z-index: 20; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <h1>試題分析小幫手<span class="pen">．</span></h1>
+    <div class="hdr-tools">
+      <div class="theme-seg" role="group" aria-label="背景亮暗">
+        <button type="button" data-theme-set="light" aria-pressed="false">☀ 亮色</button>
+        <button type="button" data-theme-set="dark" aria-pressed="false">☾ 暗色</button>
+      </div>
+      <button type="button" class="btn small" id="openSettings">🔑 API 金鑰／型號</button>
+    </div>
+    <p style="flex-basis:100%">上傳數學題目，找出誘答陷阱、分析錯題原因、產出教學建議與教案（優履工作室研發）</p>
+  </header>
+
+  <div class="grid">
+    <aside class="input card" aria-label="輸入試題">
+      <div>
+        <div class="label">試題來源</div>
+        <div class="seg" role="group" aria-label="試題來源" style="margin-top:6px">
+          <button type="button" id="modeImg" aria-pressed="true">圖片</button>
+          <button type="button" id="modeText" aria-pressed="false">文字</button>
+        </div>
+      </div>
+
+      <div id="imgArea">
+        <div class="drop" id="drop" tabindex="0" role="button" aria-label="選擇試題圖片">
+          <strong>拖曳、貼上或選擇題目圖片</strong>
+          <small>支援截圖直接 Ctrl+V 貼上</small>
+          <div class="drop-actions">
+            <button type="button" class="btn small" id="pickBtn">選擇檔案</button>
+            <button type="button" class="btn small ghost" id="camBtn">用手機拍照</button>
+          </div>
+        </div>
+        <input type="file" id="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+        <input type="file" id="cam" accept="image/*" capture="environment" hidden>
+        <div class="preview" id="preview" hidden>
+          <img id="previewImg" alt="試題圖片預覽">
+          <button type="button" class="btn small x" id="clearImg">移除</button>
+        </div>
+        <p class="hint" id="imgUnavail" hidden>這個檢視無法傳送圖片，請改用「文字」貼上題目。</p>
+      </div>
+
+      <div id="textArea" hidden>
+        <label class="label" for="qtext">題目文字</label>
+        <textarea id="qtext" style="margin-top:6px" placeholder="例如：3/4 − 1/3 = ？ (A) 2/1 (B) 2/12 (C) 5/12 (D) 2/7"></textarea>
+      </div>
+
+      <div>
+        <label class="label" for="note">補充說明（選填）</label>
+        <textarea id="note" style="margin-top:6px" placeholder="年級、正確答案、學生答題情形，例如：五年級，答對率 48%，多數選 A"></textarea>
+      </div>
+
+      <div>
+        <div class="label">使用型號</div>
+        <div class="model-line" style="margin-top:6px">
+          <div style="min-width:0"><b id="modelName"></b><small id="modelDesc"></small></div>
+          <button type="button" class="btn small" id="openSettings2">更換</button>
+        </div>
+      </div>
+
+      <button type="button" class="btn primary" id="analyzeBtn">開始分析</button>
+      <div class="status" id="status" hidden></div>
+
+      <div class="res">
+        <div class="label">資源連結</div>
+        <a href="https://padlet.com/cdrcdr/breakout-room/ldoNv8bGKDGD2JXV-W7ZVbegpqEZ5XNDM" target="_blank" rel="noopener noreferrer">數學學力檢測（題目整理）↗</a>
+        <a href="https://padlet.com/cdrcdr/breakout-room/Bbjnqxr8bYBZ493Q-W7ZVbegpqEZ5XNDM" target="_blank" rel="noopener noreferrer">數學篩選測驗（題目整理）↗</a>
+        <div style="margin-top:4px">問題反應信箱：<span class="mail">qekepv@gmail.com</span></div>
+      </div>
+    </aside>
+
+    <main class="out">
+      <div class="tabs" role="tablist" id="tabs"></div>
+      <section class="panel" id="panel" role="tabpanel"></section>
+    </main>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+<dialog id="settings" aria-labelledby="setTitle">
+  <div class="dlg-h"><h2 id="setTitle">API 金鑰與型號</h2><button type="button" class="btn small ghost" id="closeSettings">關閉</button></div>
+  <div class="dlg-b">
+    <div class="status" id="setPrompt" hidden></div>
+    <div class="label">1．選擇 AI 服務</div>
+    <div class="seg" role="group" aria-label="AI 服務">
+      <button type="button" data-prov="gemini" aria-pressed="true">Google Gemini</button>
+      <button type="button" data-prov="claude" aria-pressed="false">Anthropic Claude</button>
+    </div>
+    <div class="label" style="margin-top:6px">2．輸入 API 金鑰</div>
+    <div class="keyrow">
+      <input type="password" id="keyInput" autocomplete="off" spellcheck="false" placeholder="貼上你的 API 金鑰">
+      <button type="button" class="btn small ghost" id="keyShow">顯示</button>
+    </div>
+    <p class="hint" id="keyHelp"></p>
+    <label class="chk"><input type="checkbox" id="keyRemember" checked> 在這台電腦記住金鑰（公用電腦請取消勾選）</label>
+    <div class="label" style="margin-top:6px">3．選擇型號</div>
+    <div id="modelList" style="display:flex;flex-direction:column;gap:8px"></div>
+    <input type="text" id="customModel" spellcheck="false" placeholder="或自行輸入型號 ID（選填，會優先使用）">
+    <div class="row">
+      <button type="button" class="btn small" id="testKey">測試連線</button>
+      <span class="test-out" id="testOut"></span>
+    </div>
+    <div class="keynote"><b>金鑰安全</b><br>金鑰只存在這個瀏覽器裡，分析時由瀏覽器直接送到 Google 或 Anthropic，不會經過其他伺服器。費用依各家 API 計價，由金鑰擁有者支付。</div>
+  </div>
+  <div class="dlg-f"><button type="button" class="btn primary" id="saveSettings" style="font-size:14px;padding:8px 16px">儲存設定</button></div>
+</dialog>
+
+<script>
+// ---------- 理論文本（沿用原工具） ----------
+const CONJECTURING_TEXT = `數學臆測是一個歷程，從建立資料、觀察資料、尋求規律、提出猜想，藉由小組或全班共同檢驗猜想的正確性及效化猜想的可靠性，再將猜想推論到所有情況，並加以證實。
+
+(一)造例階段 (造例 組織 觀察):
+強調讓個別學生造例子。任務設計上會提供給每一位學生有造一、二個例子的機會。完成檢驗後進入彙整。彙整小組四個人的例子，目的是為了讓學生觀察更多例子，以利於從中發現規律。
+
+(二)提出猜想階段 (發現關係並提出猜想):
+依據第一階段彙整的例子發現關係並提出暫時性猜想。此階段是在培養學生說話要有憑有據。學生從例子中發現數學關係，並提出個人猜想，再彙整成小組猜想，最後在全班討論時提出全班公認的猜想。
+可能錯誤：(1)非依照觀察數據提出 (2)普遍常識 (3)錯誤數學想法。需透過小組檢驗反駁。
+
+(三) 效化階段 (效化猜想):
+依據組內有限資料提出的暫時性猜想，可能只是特殊例。需要他組更多的例子來效化，以支持或反駁原猜想。此階段在培養理性批判與說服他人的溝通素養。透過反駁(Refutation)、提供證據(warrant)、背景知識(backing)、加入限制條件(qualifiers)來修正猜想。
+
+(四) 一般化階段 (猜想一般化):
+將非恆真的猜想縮小範圍或限制條件，成為恆真的猜想；將恆真的猜想加入全稱量詞(如：所有、任意...)成為數學命題。培養大膽推論。
+
+(五) 證明階段 (證明一般化):
+破除再舉更多有限例的證明方式，改以演繹推理方式來證明。說明一個論述，並從小開始培養數學證明的想法。Toulmin論證模式(TAP)。`;
+
+const POLYA_TEXT = `Polya (1945) How to solve it《如何解題》將解題過程分為四個階段：
+
+(1) 理解問題 (understanding the problem):
+你明白問題的每字每句嗎？能否用自己的文字重述？已知量和未知量是什麼？資料足夠嗎？這個問題「難」在哪裡？
+教師可鼓勵學生反覆讀題，找出有用資料和問題重心。
+
+(2) 設計解題策略 (devising a plan):
+這個問題是否跟曾解決過的問題類似？可否用另一種型式表達？可否試些簡單情況？
+策略包括：估猜與測試、繪圖、探索規律、解一簡化問題、應用數字性質、逆轉思考、窮盡可能性、尋找公式、應用工具、推理、模擬、應用變量思考。
+
+(3) 按步解題 (carrying out the plan):
+你是否想出了一個解題方法？能否依這個方法計算下去？
+鼓勵學生執行計劃，若不成功可重新尋找線索。不要害怕重新開始。
+
+(4) 回顧解答 (looking back):
+答案正確嗎？方法正確嗎？為什麼得出正確答案？關鍵步驟是什麼？能應用到類似問題嗎？
+鼓勵學生驗算（檢視答案是否滿足題目要求），思考其他解法及延伸問題。`;
+
+const REMEDIAL_TEXT = `補救教學流程建議：
+實施針對特定數學題目的補救教學教案設計與實施方式，應依循「評量—教學—再評量」的循環歷程，並可採用行動研究的「計畫、行動、觀察、反思、再計畫」螺旋模式進行。
+
+1. 診斷起始行為與難點
+針對選定的數學題目，執行初步評量與診斷（前測），釐清學生基本能力、學科能力和學習動機。評量方式可採用動態評量（Dynamic Assessment），透過逐步提示來找出學生解題的困難癥結（如計算能力不足、缺乏數學語言理解、不會使用圖解等）。
+
+2. 確定補救目標與內容
+根據診斷結果，擬定具體明確的課程目標。據此進行「內容差異化」，選擇適合學生程度的教材，原則上應由易至難、由簡而繁。
+
+3. 採行差異化教學架構
+實施差異化教學（過程差異化）。教學可採「合、分、合、分、合」的五段式架構：
+(1) 合：全班引導。
+(2) 分：分組進行多層任務（任務A、任務B），提供多層次作業，相互協助。
+(3) 合：全班討論與澄清，教師從旁澄清概念。
+(4) 分：執行個人平行任務（a、b、c三級別），著重於「圖形、符號、口述」三種表徵轉換。
+(5) 合：單元後測評量與反思。
+
+4. 成果評量與反思修正
+進行單元後測，蒐集學習紀錄簿等資料進行三角驗證，反思並調整教學策略。`;
+
+// ---------- 各功能提示詞 ----------
+const ANALYSIS_TASK = `你是專業的教育測驗與評量專家。請先自行把題目完整解一次、確認正確答案，再依據試題，嚴格按照以下四個面向進行分析，並以繁體中文回應：
+
+一、題目主要檢測的能力面向是什麼？(請簡要說明)
+二、誘答的選項和理由分別是什麼？(列出具誘答性的選項及其原因；非選擇題則列出常見錯誤答案及原因)
+三、錯題主因：請歸納出四個主要原因。每一點必須包含「標題」和「簡要概述」。重要限制：簡要概述的字數嚴格控制在 20 到 35 字之間。
+四、教學重點與建議：請提出四個教學重點。每一項重點要有「標題」，下面提供 2 到 4 點描述。重要限制：每一點描述的字數嚴格控制在 20 到 35 字之間。
+
+只回傳一個 JSON 物件，不要其他文字，格式如下：
+{"question":"題目重述（一兩句，含選項）","answer":"正確答案與一句理由","abilityAssessment":"一的內容","distractors":[{"option":"(A) 2/1","reason":"理由"}],"errorCauses":[{"title":"標題","summary":"20–35字概述"}],"teachingSuggestions":[{"title":"標題","points":["20–35字描述","20–35字描述"]}]}
+errorCauses 恰好 4 個；teachingSuggestions 恰好 4 個，每個 2–4 點。
+寫完請自行檢查每句字數，超出或不足就改寫。
+若無法辨識出題目，只回傳 {"error":"說明看不清楚的地方"}。`;
+
+const FEATURES = {
+  similar: { label: "類似題", file: "類似題練習", intro: "依原題的考核觀念設計三題練習題，附參考答案與簡單解析。",
+    prompt: `請依據這道試題的內容目標與難度，設計「三題」類似的數學練習題。
+
+輸出要求：
+1. 每一題請標示 [類題 1]、[類題 2]、[類題 3]。
+2. 每一題都要附上【參考答案】與【簡單解析】。
+3. 題目設計要貼近原題的考核觀念，但數字或情境可以更換。
+4. 請使用 Markdown 格式排版，使其易於閱讀。
+5. 請自行驗算每一題，確認數字合理、答案唯一。` },
+  remedial: { label: "補救教學", file: "補救教學計畫", intro: "依「評量—教學—再評量」與「合分合分合」五段式架構，設計動態評量與 a／b／c 三級平行任務。",
+    prompt: `請依據這道試題的內容，診斷學生可能的迷思概念，並「嚴格配合」以下【補救教學流程建議】的理論架構，設計一份完整的補救教學計畫。
+
+【補救教學流程建議】：
+${REMEDIAL_TEXT}
+
+請產出包含以下四個部分的補救教學計畫：
+
+1. 【診斷與評量】：
+   - 針對此題，設計具體的「動態評量」策略（例如：當學生卡住時，教師可以給予什麼樣的語音提示或關鍵字提示？）。
+
+2. 【補救目標】：
+   - 訂定具體明確的課程目標。
+
+3. 【差異化教學流程】(重點)：
+   - 請詳細設計「合、分、合、分、合」五段式架構。
+   - 特別著重於第二次「分」的「個人平行任務」設計：請具體舉例針對此題的 任務 a (低階)、任務 b (中階)、任務 c (高階) 分別可以做什麼？(需包含圖形、符號、口述的轉換練習)。
+
+4. 【評量與反思】：
+   - 簡述如何進行後測驗證。
+
+輸出格式：請使用 Markdown 格式，標題清晰，內容具體實用。` },
+  polya: { label: "Polya 教案", file: "Polya解題教案", intro: "依 Polya 解題四階段，產出 40 分鐘完整版與 20 分鐘精簡版教案。",
+    prompt: `請依據這道試題的內容和目標，並「嚴格配合」以下【Polya 如何解題】的理論架構，設計兩份教案。
+
+【Polya 解題文本】：
+${POLYA_TEXT}
+
+請產出：
+1. 一份【40分鐘教案】：
+   - 需詳細包含四個階段：理解問題、設計解題策略、按步解題、回顧解答。
+   - 請具體運用文本中提到的提問技巧（如：已知量是什麼？跟曾解決過的問題類似嗎？）。
+
+2. 一份【20分鐘教案】(精簡版)：
+   - 著重於策略選擇與回顧驗算。
+
+輸出格式：請使用 Markdown 格式，標題清晰。` },
+  conj: { label: "臆測教案", file: "數學臆測教案", intro: "依數學臆測五階段（造例、猜想、效化、一般化、證明），產出 40 分鐘與 20 分鐘教案。",
+    prompt: `請依據這道試題的內容和目標，並「嚴格配合」以下【數學臆測教學文本】的理論架構，設計兩份教案。
+
+【數學臆測教學文本】：
+${CONJECTURING_TEXT}
+
+請產出：
+1. 一份【40分鐘教案】：
+   - 需包含：造例階段、提出猜想階段、效化階段、一般化階段。
+   - 每個階段請具體寫出教師提問與預期學生反應。
+
+2. 一份【20分鐘教案】(重點版)：
+   - 聚焦於核心的猜想與驗證過程。
+   - 適合短時間的補救教學或觀念釐清。
+
+輸出格式：請使用 Markdown 格式，標題清晰。` },
+};
+
+// ---------- 範例（開啟時顯示，標示為範例） ----------
+const EXAMPLE = {
+  question: "3/4 − 1/3 = ？　(A) 2/1　(B) 2/12　(C) 5/12　(D) 2/7",
+  answer: "(C) 5/12：通分成 9/12 − 4/12 = 5/12。",
+  abilityAssessment: "檢測學生能否理解「分母不同時須先通分，換成相同單位再相減」的異分母分數減法概念，以及正確執行通分與化簡的計算能力。",
+  distractors: [
+    { option: "(A) 2/1", reason: "把分子相減（3−1）、分母相減（4−3），將分數當成兩個整數分開計算。" },
+    { option: "(B) 2/12", reason: "分子直接相減，分母卻相乘成 12，只做了一半的通分，分子沒有跟著擴分。" },
+    { option: "(D) 2/7", reason: "分子相減、分母相加，混用了加法與減法的錯誤規則。" },
+  ],
+  errorCauses: [
+    { title: "分子分母分開算", summary: "誤把分數減法當成分子減分子、分母減分母，得到 2/1" },
+    { title: "通分只做一半", summary: "知道分母要相同，卻只把分母相乘，分子未擴分，算出 2/12" },
+    { title: "缺少單位量概念", summary: "不理解 1/4 與 1/3 是不同大小的單位，無法直接相減" },
+    { title: "未檢查答案合理性", summary: "沒有估算答案應小於 3/4，選出 2/1 這種比原數還大的答案" },
+  ],
+  teachingSuggestions: [
+    { title: "用圖像建立單位概念", points: ["用圓形或長條圖切分 3/4 與 1/3，看出兩者單位不同", "先請學生說出 3/4 和 1/3 的單位各是幾分之一"] },
+    { title: "通分的意義與步驟", points: ["以 12 為公分母，把兩數改寫成 9/12 與 4/12", "引導學生用自己的話說明為何分母相同才能相減", "強調通分是換成相同單位，分數的大小並沒有改變"] },
+    { title: "錯例分析討論", points: ["展示 2/1、2/12、2/7 三種錯解，請學生找出錯在哪裡", "讓學生用估算判斷答案應小於 3/4 且大於 0"] },
+    { title: "驗算與遷移", points: ["請學生把 5/12 加回 1/3，看看是否等於 3/4", "請學生自編一題異分母減法，再和同學交換互解"] },
+  ],
+};
+
+// ---------- 狀態 ----------
+const $ = (id) => document.getElementById(id);
+const state = {
+  mode: "img", imageFile: null, imageData: null,
+  analysis: EXAMPLE, isExample: true,
+  md: {}, // featureKey -> markdown
+  tab: "analysis", busy: null, ctl: null,
+};
+const canImages = true;
+
+function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+
+const chars = (s) => [...String(s || "").replace(/\s/g, "")].length;
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+function cnt(s) { const n = chars(s); const bad = n < 20 || n > 35; return `<span class="cnt${bad ? " bad" : ""}" title="${bad ? "字數不在 20–35 字範圍內" : "字數符合 20–35 字"}">${n}字</span>`; }
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => (t.hidden = true), 2200); }
+function setStatus(msg, err) { const s = $("status"); if (!msg) { s.hidden = true; return; } s.hidden = false; s.textContent = msg; s.classList.toggle("err", !!err); }
+
+const ERR = {
+  not_granted: "尚未允許這個頁面使用 Claude。請重新整理頁面，並在詢問時選擇允許。",
+  sampling_disabled: "你的帳號目前無法使用 Claude。",
+  rate_limited: "使用太頻繁或已達用量上限，請稍後再試。",
+  session_expired: "登入已過期，請重新登入 claude.ai 後再試。",
+  image_rejected: "這張圖片無法讀取，請換一張 JPG 或 PNG 圖片。",
+  images_unavailable: "這個檢視無法傳送圖片，請改用文字貼上題目。",
+  refused: "Claude 無法處理這個內容，請確認上傳的是試題。",
+  invalid_json: "分析結果格式有誤，請按「開始分析」再試一次。",
+  prompt_too_large: "內容太長，請縮短題目或補充說明。",
+  empty_completion: "沒有收到內容，請再試一次。",
+};
+const errMsg = (e) => ERR[e?.code] || "連線中斷或服務暫時無法回應，請再試一次。";
+
+// ---------- 輸入 ----------
+function setMode(m) {
+  state.mode = m;
+  $("modeImg").setAttribute("aria-pressed", m === "img");
+  $("modeText").setAttribute("aria-pressed", m === "text");
+  $("imgArea").hidden = m !== "img";
+  $("textArea").hidden = m !== "text";
+}
+$("modeImg").onclick = () => setMode("img");
+$("modeText").onclick = () => setMode("text");
+
+function takeFile(f) {
+  if (!f || !f.type.startsWith("image/")) { toast("請選擇圖片檔"); return; }
+  prepImage(f).then(({ preview, image }) => {
+    state.imageFile = image; $("previewImg").src = preview; $("preview").hidden = false; $("drop").hidden = true;
+  }).catch((e) => toast(e.message));
+  setMode("img");
+}
+$("pickBtn").onclick = (e) => { e.stopPropagation(); $("file").click(); };
+$("camBtn").onclick = (e) => { e.stopPropagation(); $("cam").click(); };
+$("drop").onclick = () => $("file").click();
+$("drop").onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("file").click(); } };
+$("file").onchange = (e) => { takeFile(e.target.files[0]); e.target.value = ""; };
+$("cam").onchange = (e) => { takeFile(e.target.files[0]); e.target.value = ""; };
+$("clearImg").onclick = () => { state.imageFile = null; $("preview").hidden = true; $("drop").hidden = false; $("previewImg").removeAttribute("src"); };
+const drop = $("drop");
+["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", (e) => takeFile(e.dataTransfer.files[0]));
+window.addEventListener("paste", (e) => {
+  const item = [...(e.clipboardData?.items || [])].find((i) => i.type.startsWith("image/"));
+  if (item && canImages) { takeFile(item.getAsFile()); toast("已貼上圖片"); }
+});
+$("qtext").value = load("ea_text") || "";
+$("note").value = load("ea_note") || "";
+$("qtext").oninput = () => store("ea_text", $("qtext").value);
+$("note").oninput = () => store("ea_note", $("note").value);
+// ---------- API 金鑰與型號 ----------
+const PROVIDERS = {
+  gemini: {
+    name: "Google Gemini", defaultModel: "gemini-3.1-flash-lite",
+    help: '到 <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a> 免費申請，金鑰通常以 AIza 開頭。',
+    models: [
+      { id: "gemini-3.1-flash-lite", name: "Gemini 3.1 Flash-Lite", tag: "最推薦預設", desc: "回應延遲極低、反應速度快且穩定，適合大部分試題分析與教案設計。" },
+      { id: "gemini-3.8-flash", name: "Gemini 3.8 Flash", tag: "最新旗艦世代", desc: "Google 最新一代多模態大模型，效能與理解力全面提升。" },
+      { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro", tag: "深度思考推理", desc: "具備頂尖複雜推理能力，適合難度較高、幾何圖形或多步驟數學難題。" },
+      { id: "gemini-3-flash-preview", name: "Gemini 3 Flash Preview", tag: "預覽版本", desc: "Gemini 3 系列預覽版模型。" },
+    ],
+  },
+  claude: {
+    name: "Anthropic Claude", defaultModel: "claude-sonnet-5-5",
+    help: '到 <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Claude Console</a> 申請（需綁定付款），金鑰以 sk-ant- 開頭。',
+    models: [
+      { id: "claude-sonnet-5-5", name: "Claude Sonnet 5.5", tag: "最推薦預設", desc: "理解力與速度兼具，適合一般試題分析與完整教案。" },
+      { id: "claude-haiku-5-5", name: "Claude Haiku 5.5", tag: "最快速", desc: "回應最快、費用最低，適合簡單計算題或快速產生類似題。" },
+      { id: "claude-opus-5-5", name: "Claude Opus 5.5", tag: "深度思考推理", desc: "推理能力最強，適合幾何圖形、多步驟或難度較高的題目，速度較慢。" },
+    ],
+  },
+};
+const cfg = {
+  provider: load("ea_provider") || "gemini",
+  model: {}, key: {},
+  custom: {},
+};
+for (const k of Object.keys(PROVIDERS)) {
+  cfg.model[k] = load("ea_model_" + k) || PROVIDERS[k].defaultModel;
+  cfg.custom[k] = load("ea_custom_" + k) || "";
+  cfg.key[k] = load("ea_key_" + k) || (() => { try { return sessionStorage.getItem("ea_key_" + k) || ""; } catch (e) { return ""; } })();
+}
+const activeModel = () => (cfg.custom[cfg.provider] || cfg.model[cfg.provider]).trim();
+const activeKey = () => (cfg.key[cfg.provider] || "").trim();
+function modelLabel(prov, id) { return PROVIDERS[prov].models.find((m) => m.id === id)?.name || id; }
+function showModel() {
+  $("modelName").textContent = modelLabel(cfg.provider, activeModel());
+  $("modelDesc").innerHTML = `${PROVIDERS[cfg.provider].name}　` + (activeKey() ? '<span class="chip ok">✓ 已設定金鑰</span>' : '<span class="chip no">尚未設定金鑰</span>');
+}
+let dlgProv = cfg.provider, pending = null;
+function fillDialog() {
+  document.querySelectorAll("[data-prov]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.prov === dlgProv));
+  const P = PROVIDERS[dlgProv];
+  $("keyInput").value = cfg.key[dlgProv] || "";
+  $("keyInput").placeholder = dlgProv === "gemini" ? "AIza…" : "sk-ant-…";
+  $("keyHelp").innerHTML = P.help;
+  $("customModel").value = cfg.custom[dlgProv] || "";
+  $("modelList").innerHTML = P.models.map((m) => `<label class="mopt"><input type="radio" name="model" id="m-${m.id}" value="${m.id}" ${m.id === cfg.model[dlgProv] ? "checked" : ""}><div><span class="nm">${m.name}</span><span class="tg">${m.tag}</span></div><div class="ds">${m.desc}</div></label>`).join("");
+  $("testOut").textContent = ""; $("testOut").className = "test-out";
+}
+function readDialog() {
+  cfg.key[dlgProv] = $("keyInput").value.trim();
+  cfg.model[dlgProv] = document.querySelector('input[name="model"]:checked')?.value || PROVIDERS[dlgProv].defaultModel;
+  cfg.custom[dlgProv] = $("customModel").value.trim();
+}
+function openSettings(msg) {
+  dlgProv = cfg.provider; fillDialog();
+  const sp = $("setPrompt"); sp.hidden = !msg || typeof msg !== "string"; sp.textContent = typeof msg === "string" ? msg : "";
+  $("settings").showModal();
+}
+document.querySelectorAll("[data-prov]").forEach((b) => (b.onclick = () => { readDialog(); dlgProv = b.dataset.prov; fillDialog(); }));
+$("keyShow").onclick = () => { const i = $("keyInput"); const show = i.type === "password"; i.type = show ? "text" : "password"; $("keyShow").textContent = show ? "隱藏" : "顯示"; };
+$("openSettings").onclick = () => openSettings();
+$("openSettings2").onclick = () => openSettings();
+$("closeSettings").onclick = () => { pending = null; $("settings").close(); };
+$("testKey").onclick = async () => {
+  readDialog();
+  const out = $("testOut"); out.className = "test-out"; out.textContent = "測試中…";
+  $("testKey").disabled = true;
+  try {
+    const m = (cfg.custom[dlgProv] || cfg.model[dlgProv]).trim();
+    const r = await callLLM({ provider: dlgProv, key: cfg.key[dlgProv], model: m, prompt: "請只回覆 OK 兩個字母。", maxTokens: 20, noFallback: true });
+    out.className = "test-out ok"; out.textContent = `連線成功！型號【${m}】回應正常。`;
+  } catch (e) { out.className = "test-out bad"; out.textContent = "測試失敗：" + (e.message || e); }
+  $("testKey").disabled = false;
+};
+$("saveSettings").onclick = () => {
+  readDialog();
+  cfg.provider = dlgProv; store("ea_provider", dlgProv);
+  const remember = $("keyRemember").checked;
+  for (const k of Object.keys(PROVIDERS)) {
+    store("ea_model_" + k, cfg.model[k]); store("ea_custom_" + k, cfg.custom[k]);
+    if (remember && cfg.key[k]) store("ea_key_" + k, cfg.key[k]); else { try { localStorage.removeItem("ea_key_" + k); } catch (e) {} }
+    try { sessionStorage.setItem("ea_key_" + k, cfg.key[k] || ""); } catch (e) {}
+  }
+  showModel(); $("settings").close(); toast("已儲存：" + modelLabel(cfg.provider, activeModel()));
+  if (pending && activeKey()) { const fn = pending; pending = null; fn(); }
+};
+showModel();
+
+// ---------- 呼叫 API（瀏覽器直接連線） ----------
+async function readSSE(res, onEvent) {
+  const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = "";
+  for (;;) {
+    const { value, done } = await reader.read(); if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split(/\r?\n/); buf = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith("data:")) continue;
+      const d = line.slice(5).trim(); if (!d || d === "[DONE]") continue;
+      try { onEvent(JSON.parse(d)); } catch (e) { if (e.isApi) throw e; }
+    }
+  }
+}
+function httpError(status, msg, prov) {
+  const map = {
+    400: "請求內容有誤（可能是型號 ID 錯誤或圖片格式不支援）",
+    401: "API 金鑰無效，請確認是否貼錯",
+    403: "金鑰沒有使用這個型號的權限",
+    404: "找不到這個型號，請換一個型號",
+    429: "已達使用頻率或額度上限，請稍後再試或檢查帳單",
+    500: "服務暫時發生錯誤，請稍後再試", 503: "服務目前忙碌，請稍後再試", 529: "服務目前忙碌，請稍後再試",
+  };
+  const e = new Error((map[status] || `伺服器回應錯誤 (${status})`) + (msg ? `：${msg}` : ""));
+  e.status = status; e.isApi = true; return e;
+}
+async function callLLM({ provider = cfg.provider, key = activeKey(), model = activeModel(), prompt, image, json, onText, signal, maxTokens = 8000, temperature, noFallback }) {
+  if (!key) { const e = new Error("尚未設定 API 金鑰"); e.noKey = true; throw e; }
+  let text = "", truncated = false;
+  const emit = (d) => { if (!d) return; text += d; onText?.(text); };
+  if (provider === "gemini") {
+    const parts = [];
+    if (image) parts.push({ inlineData: { mimeType: image.mime, data: image.b64 } });
+    parts.push({ text: prompt });
+    const body = { contents: [{ role: "user", parts }], generationConfig: { temperature: temperature ?? 0.4 } };
+    if (json) body.generationConfig.responseMimeType = "application/json";
+    const go = async (m) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:streamGenerateContent?alt=sse`, {
+      method: "POST", signal, headers: { "Content-Type": "application/json", "x-goog-api-key": key }, body: JSON.stringify(body) });
+    let res = await go(model);
+    if (!res.ok && (res.status === 404 || res.status === 503) && !noFallback && model !== PROVIDERS.gemini.defaultModel) {
+      toast(`型號 ${model} 暫時無法使用，自動改用 ${PROVIDERS.gemini.defaultModel}`);
+      res = await go(PROVIDERS.gemini.defaultModel);
+    }
+    if (!res.ok) { const j = await res.json().catch(() => ({})); throw httpError(res.status, j?.error?.message, provider); }
+    await readSSE(res, (ev) => {
+      if (ev.error) { const e = httpError(ev.error.code || 500, ev.error.message); throw e; }
+      const c = ev.candidates?.[0];
+      (c?.content?.parts || []).forEach((p) => { if (p.text && !p.thought) emit(p.text); });
+      if (c?.finishReason === "MAX_TOKENS") truncated = true;
+    });
+  } else {
+    const content = [];
+    if (image) content.push({ type: "image", source: { type: "base64", media_type: image.mime, data: image.b64 } });
+    content.push({ type: "text", text: prompt });
+    const body = { model, max_tokens: maxTokens, stream: true, messages: [{ role: "user", content }] };
+    if (temperature != null) body.temperature = temperature;
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST", signal,
+      headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+      body: JSON.stringify(body) });
+    if (!res.ok) { const j = await res.json().catch(() => ({})); throw httpError(res.status, j?.error?.message, provider); }
+    await readSSE(res, (ev) => {
+      if (ev.type === "content_block_delta" && ev.delta?.type === "text_delta") emit(ev.delta.text);
+      else if (ev.type === "message_delta" && ev.delta?.stop_reason === "max_tokens") truncated = true;
+      else if (ev.type === "error") throw httpError(529, ev.error?.message);
+    });
+  }
+  if (!text.trim()) throw new Error("模型沒有回傳內容，請再試一次或換一個型號");
+  return { text, truncated };
+}
+function parseJSONLoose(t) {
+  try { return JSON.parse(t); } catch (e) {}
+  const f = t.match(/```(?:json)?\s*([\s\S]*?)```/); if (f) { try { return JSON.parse(f[1]); } catch (e) {} }
+  const a = t.indexOf("{"), b = t.lastIndexOf("}");
+  if (a >= 0 && b > a) { try { return JSON.parse(t.slice(a, b + 1)); } catch (e) {} }
+  return null;
+}
+function prepImage(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onerror = () => reject(new Error("讀取圖片失敗"));
+    r.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("這張圖片無法讀取，請換一張 JPG 或 PNG 圖片"));
+      img.onload = () => {
+        const max = 1600, sc = Math.min(1, max / Math.max(img.width, img.height));
+        const c = document.createElement("canvas"); c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
+        const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+        const url = c.toDataURL("image/jpeg", 0.9);
+        resolve({ preview: r.result, image: { mime: "image/jpeg", b64: url.split(",")[1] } });
+      };
+      img.src = r.result;
+    };
+    r.readAsDataURL(file);
+  });
+}
+
+// ---------- 亮暗背景 ----------
+function applyTheme(t) {
+  const root = document.documentElement;
+  const sys = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  const eff = t || sys;
+  if (t) root.setAttribute("data-theme", t);
+  document.querySelectorAll("[data-theme-set]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.themeSet === eff));
+}
+document.querySelectorAll("[data-theme-set]").forEach((b) => (b.onclick = () => { store("ea_theme", b.dataset.themeSet); applyTheme(b.dataset.themeSet); }));
+applyTheme(load("ea_theme"));
+
+function currentInput() {
+  const note = $("note").value.trim();
+  if (state.mode === "img") {
+    if (!state.imageFile) return null;
+    return { images: state.imageFile, ctx: "【試題】在附上的圖片中，請仔細辨識題目文字、圖形與選項。" + (note ? `\n【教師補充說明】${note}` : "") };
+  }
+  const t = $("qtext").value.trim();
+  if (!t) return null;
+  return { images: null, ctx: `【試題】\n${t}` + (note ? `\n\n【教師補充說明】${note}` : "") };
+}
+
+// ---------- 分頁 ----------
+const TABS = [["analysis", "試題分析"], ["similar", "類似題"], ["remedial", "補救教學"], ["polya", "Polya 教案"], ["conj", "臆測教案"]];
+function renderTabs() {
+  $("tabs").innerHTML = TABS.map(([k, l]) => {
+    const done = k === "analysis" ? !!state.analysis : !!state.md[k];
+    return `<button class="tab" role="tab" data-k="${k}" aria-selected="${state.tab === k}">${l}${done && !(k === "analysis" && state.isExample) ? '<span class="dot" aria-label="已產生"></span>' : ""}</button>`;
+  }).join("");
+  $("tabs").querySelectorAll(".tab").forEach((b) => (b.onclick = () => { state.tab = b.dataset.k; render(); }));
+}
+
+function thinking(label) {
+  return `<div class="thinking"><i></i><span>${esc(label)}</span></div><div class="row"><button class="btn small" id="stopBtn">停止</button></div>`;
+}
+
+function renderAnalysis() {
+  const a = state.analysis;
+  if (state.busy === "analysis") return thinking("Claude 正在解題並分析，大約需要 20–60 秒…");
+  if (!a) return `<div class="empty"><h3>還沒有分析結果</h3><p>在左側上傳題目圖片或貼上題目文字，再按「開始分析」。</p></div>`;
+  return `
+    ${state.isExample ? `<p class="hint" style="margin:0 0 12px"><span class="sample-tag">範例</span>以下是示範結果。上傳你的題目後按「開始分析」，就會換成你的題目。</p>` : ""}
+    ${a.question ? `<div class="qbox"><div class="q">${esc(a.question)}</div>${a.answer ? `<div class="ans"><b>正確答案</b>　${esc(a.answer)}</div>` : ""}</div>` : ""}
+    <h2 class="sec"><span class="n">一、</span>主要檢測的能力面向</h2>
+    <p class="ability">${esc(a.abilityAssessment)}</p>
+    <h2 class="sec"><span class="n">二、</span>誘答選項與理由</h2>
+    <ul class="dist">${(a.distractors || []).map((d) => `<li><span class="opt">${esc(d.option)}</span><span>${esc(d.reason)}</span></li>`).join("") || "<li>無</li>"}</ul>
+    <h2 class="sec"><span class="n">三、</span>錯題主因</h2>
+    <ol class="causes">${(a.errorCauses || []).map((c) => `<li><div class="t">${esc(c.title)}</div><div>${esc(c.summary)} ${cnt(c.summary)}</div></li>`).join("")}</ol>
+    <h2 class="sec"><span class="n">四、</span>教學重點與建議</h2>
+    <div class="sugg">${(a.teachingSuggestions || []).map((s, i) => `<div class="item"><h3><span>重點${i + 1}</span>${esc(s.title)}</h3><ul>${(s.points || []).map((p) => `<li>${esc(p)}${cnt(p)}</li>`).join("")}</ul></div>`).join("")}</div>
+    ${state.isExample ? "" : `<div class="toolbar">
+      <button class="btn small ghost" data-act="copy">複製文字</button>
+      <button class="btn small ghost" data-act="dl">下載 .md</button>
+    </div>`}
+    <div class="toolbar" style="${state.isExample ? "" : "border-top:0;margin-top:0;padding-top:0"}">
+      <span class="hint" style="margin-right:auto;align-self:center">接著產出：</span>
+      ${Object.entries(FEATURES).map(([k, f]) => `<button class="btn small" data-go="${k}">${f.label}</button>`).join("")}
+    </div>`;
+}
+
+function mdHtml(md) {
+  const html = DOMPurify.sanitize(marked.parse(md || ""));
+  return html.replace(/<table>/g, '<div class="tw"><table>').replace(/<\/table>/g, "</table></div>");
+}
+
+function renderFeature(k) {
+  const f = FEATURES[k];
+  const md = state.md[k];
+  if (state.busy === k) {
+    return md ? `<div class="md" id="mdOut">${mdHtml(md)}</div><div class="row" style="margin-top:12px"><button class="btn small" id="stopBtn">停止</button></div>`
+              : thinking(`Claude 正在撰寫${f.label}，大約需要 30–90 秒…`);
+  }
+  if (!md) {
+    const has = state.analysis && !state.isExample;
+    return `<div class="empty"><h3>${f.label}</h3><p>${f.intro}</p>
+      <button class="btn primary" data-gen="${k}" ${has || currentInput() ? "" : ""}>產生${f.label}</button>
+      <p class="hint" style="margin-top:10px">${currentInput() ? "會使用左側目前的題目。" : "請先在左側放入題目。"}</p></div>`;
+  }
+  return `<div class="md" id="mdOut">${mdHtml(md)}</div>
+    <div class="toolbar">
+      <button class="btn small ghost" data-act="copy">複製文字</button>
+      <button class="btn small ghost" data-act="dl">下載 .md</button>
+      <button class="btn small" data-gen="${k}" data-fresh="1">重新產生</button>
+    </div>`;
+}
+
+function render() {
+  renderTabs();
+  const p = $("panel");
+  p.innerHTML = state.tab === "analysis" ? renderAnalysis() : renderFeature(state.tab);
+  p.querySelectorAll("[data-go]").forEach((b) => (b.onclick = () => { state.tab = b.dataset.go; render(); if (!state.md[b.dataset.go]) generate(b.dataset.go); }));
+  p.querySelectorAll("[data-gen]").forEach((b) => (b.onclick = () => generate(b.dataset.gen, !!b.dataset.fresh)));
+  p.querySelectorAll("[data-act=copy]").forEach((b) => (b.onclick = copyCurrent));
+  p.querySelectorAll("[data-act=dl]").forEach((b) => (b.onclick = downloadCurrent));
+  const stop = $("stopBtn"); if (stop) stop.onclick = () => state.ctl?.abort();
+  $("analyzeBtn").disabled = !!state.busy;
+  $("analyzeBtn").textContent = state.busy === "analysis" ? "分析中…" : "開始分析";
+}
+
+// ---------- 匯出 ----------
+function analysisMd(a) {
+  let s = `# 試題分析報告\n\n`;
+  if (a.question) s += `**題目**：${a.question}\n\n`;
+  if (a.answer) s += `**正確答案**：${a.answer}\n\n`;
+  s += `## 一、題目主要檢測的能力面向\n\n${a.abilityAssessment}\n\n## 二、誘答的選項和理由\n\n`;
+  (a.distractors || []).forEach((d) => (s += `- **${d.option}**：${d.reason}\n`));
+  s += `\n## 三、錯題主因\n\n`;
+  (a.errorCauses || []).forEach((c, i) => (s += `${i + 1}. **${c.title}**：${c.summary}\n`));
+  s += `\n## 四、教學重點與建議\n\n`;
+  (a.teachingSuggestions || []).forEach((t, i) => { s += `### 重點${i + 1}：${t.title}\n\n`; (t.points || []).forEach((p) => (s += `- ${p}\n`)); s += `\n`; });
+  return s;
+}
+function currentMd() { return state.tab === "analysis" ? analysisMd(state.analysis) : state.md[state.tab]; }
+function currentName() { return state.tab === "analysis" ? "試題分析報告" : FEATURES[state.tab].file; }
+async function copyCurrent() {
+  const text = currentMd();
+  try { await navigator.clipboard.writeText(text); toast("已複製"); }
+  catch (e) {
+    const r = document.createRange(); const el = state.tab === "analysis" ? $("panel") : $("mdOut");
+    r.selectNodeContents(el); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+    toast("已選取內容，請按 Ctrl+C 複製");
+  }
+}
+async function downloadCurrent() {
+  const d = new Date(); const ds = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+  const url = URL.createObjectURL(new Blob([currentMd()], { type: "text/markdown;charset=utf-8" }));
+  const a = document.createElement("a"); a.href = url; a.download = `${currentName()}_${ds}.md`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ---------- 呼叫 Claude ----------
+function needKey(fn) {
+  if (activeKey()) return false;
+  pending = fn;
+  openSettings(`請先輸入 ${PROVIDERS[cfg.provider].name} 的 API 金鑰，儲存後會自動開始。`);
+  return true;
+}
+const errText = (e) => e?.message || "連線失敗，請檢查網路後再試一次";
+
+async function analyze() {
+  const inp = currentInput();
+  if (!inp) { setStatus(state.mode === "img" ? "請先放入題目圖片。" : "請先貼上題目文字。", true); return; }
+  if (needKey(analyze)) return;
+  setStatus(""); state.md = {}; state.tab = "analysis"; state.busy = "analysis";
+  state.ctl = new AbortController(); render();
+  try {
+    const { text } = await callLLM({ prompt: `${ANALYSIS_TASK}\n\n${inp.ctx}`, image: inp.images, json: true, temperature: 0.2, maxTokens: 4000, signal: state.ctl.signal });
+    const r = parseJSONLoose(text);
+    if (r && r.error) setStatus("無法辨識題目：" + r.error, true);
+    else if (!r || !r.abilityAssessment) setStatus("分析結果格式有誤，請按「開始分析」再試一次，或換一個型號。", true);
+    else { state.analysis = r; state.isExample = false; state.lastCtx = inp; }
+  } catch (e) { if (e?.name !== "AbortError") setStatus(errText(e), true); }
+  state.busy = null; state.ctl = null; render();
+}
+
+async function generate(k) {
+  const inp = currentInput() || state.lastCtx;
+  if (!inp) { setStatus(state.mode === "img" ? "請先放入題目圖片。" : "請先貼上題目文字。", true); return; }
+  if (state.busy) { toast("請等目前的工作完成"); return; }
+  if (needKey(() => generate(k))) return;
+  setStatus(""); state.busy = k; state.tab = k; delete state.md[k];
+  state.ctl = new AbortController(); render();
+  const a = state.analysis && !state.isExample ? state.analysis : null;
+  const known = a ? `\n\n【已完成的試題分析，可參考】\n題目：${a.question || ""}\n正確答案：${a.answer || ""}\n能力面向：${a.abilityAssessment}\n錯題主因：${(a.errorCauses || []).map((c) => c.title + "—" + c.summary).join("；")}` : "";
+  const prompt = `${FEATURES[k].prompt}\n\n請以繁體中文撰寫，直接輸出內容，不要開場白或結語。\n\n${inp.ctx}${known}`;
+  try {
+    const { text, truncated } = await callLLM({ prompt, image: inp.images, signal: state.ctl.signal, maxTokens: 12000,
+      onText: (t) => { state.md[k] = t; const o = $("mdOut"); if (o && state.tab === k) o.innerHTML = mdHtml(t); else if (state.tab === k) render(); } });
+    state.md[k] = text + (truncated ? "\n\n> 內容過長被截斷，可按「重新產生」再試一次。" : "");
+  } catch (e) {
+    if (e?.name !== "AbortError") { setStatus(errText(e), true); if (!state.md[k]) delete state.md[k]; }
+  }
+  state.busy = null; state.ctl = null; render();
+}
+$("analyzeBtn").onclick = analyze;
+
+// ---------- 啟動 ----------
+render();
+</script>
+</body>
+</html>
